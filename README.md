@@ -1,4 +1,4 @@
-# StaffOpt-
+# StaffOpt
 ## Manpower Management System
 StaffOpt - Professional Workforce Management System
 StaffOpt is a comprehensive, single-page web application designed to streamline and modernize human resources and workforce management. In today's fast-paced corporate environment, managing employee data, attendance, schedules, and leave can be a complex and time-consuming task. StaffOpt addresses these challenges by providing a centralized, all-in-one platform with a clean, professional, and intuitive user interface.
