@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StaffOpt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Roboto+Slab:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background-color: #f4f7fc;
+        }
+        .font-brand { font-family: 'Poppins', sans-serif; }
+        .font-heading { font-family: 'Roboto Slab', serif; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: white; z-index: 1050; animation: fadeInOut 3s forwards; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        @keyframes fadeInOut { 0%, 100% { opacity: 0; transform: translateY(20px); } 10%, 90% { opacity: 1; transform: translateY(0); } }
+        
+        .sidebar-link { 
+            display: flex; 
+            align-items: center; 
+            padding: 0.75rem 1.5rem; 
+            margin: 0.25rem 0;
+            border-radius: 0.5rem; 
+            transition: background-color 0.2s, color 0.2s; 
+            font-weight: 500;
+            position: relative;
+        }
+        .sidebar-link.active { 
+            background-color: rgba(255, 255, 255, 0.1); 
+            color: white; 
+        }
+         .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 24px;
+            width: 4px;
+            background-color: #3b82f6;
+            border-radius: 0 4px 4px 0;
+        }
+        .sidebar-link:not(.active) { color: #a0aec0; }
+        .sidebar-link:not(.active):hover { background-color: rgba(255, 255, 255, 0.05); color: #e2e8f0; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.05);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+         .btn-secondary {
+            background-color: #e2e8f0;
+            color: #1e293b;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+        // --- MOCK DATA ---
+        const initialEmployees = [
+            { id: 'EMP381', name: 'Rohan Sharma', email: 'rohan.sharma@example.com', department: 'Engineering', role: 'Software Engineer', status: 'Active', hireDate: '2022-08-15', skills: ['React', 'Node.js', 'PostgreSQL'], experience: '5 years in web development.', salary: 95000, managerId: 'EMP382', performance: { rating: 4, notes: 'Consistently meets targets.'}, training: ['Advanced React Patterns'] },
+            { id: 'EMP382', name: 'Priya Patel', email: 'priya.patel@example.com', department: 'Marketing', role: 'Marketing Manager', status: 'Active', hireDate: '2021-02-20', skills: ['SEO', 'Content Strategy'], experience: '8 years in digital marketing.', salary: 110000, managerId: null, performance: { rating: 5, notes: 'Exceeded all Q3 goals.'}, training: ['Leadership Workshop'] },
+            { id: 'EMP383', name: 'Arjun Singh', email: 'arjun.singh@example.com', department: 'Sales', role: 'Sales Representative', status: 'On Leave', hireDate: '2023-01-10', skills: ['Negotiation', 'CRM'], experience: '3 years in sales.', salary: 72000, managerId: 'EMP382', performance: { rating: 4, notes: 'Strong relationship builder.'}, training: [] },
+            { id: 'EMP384', name: 'Ananya Gupta', email: 'ananya.gupta@example.com', department: 'Human Resources', role: 'HR Specialist', status: 'Active', hireDate: '2022-11-01', skills: ['Recruiting', 'Employee Relations'], experience: '4 years in HR.', salary: 80000, managerId: null, performance: { rating: 5, notes: 'Excellent handling of recent hiring surge.'}, training: ['Conflict Resolution'] },
+            { id: 'EMP385', name: 'Vikram Reddy', email: 'vikram.reddy@example.com', department: 'Finance', role: 'Financial Analyst', status: 'Active', hireDate: '2024-03-12', skills: ['Excel', 'Financial Modeling'], experience: '2 years as an analyst.', salary: 75000, managerId: null, performance: { rating: 4, notes: 'Accurate and timely reporting.'}, training: [] },
+            { id: 'EMP386', name: 'Nisha Mehra', email: 'nisha.mehra@example.com', department: 'Operations', role: 'Operations Coordinator', status: 'Terminated', hireDate: '2021-09-05', skills: ['Logistics', 'Process Improvement'], experience: '3 years in operations.', salary: 68000, managerId: null, performance: { rating: 2, notes: 'Performance issues noted in Q2.'}, training: [] },
+            { id: 'EMP387', name: 'Sameer Khan', email: 'sameer.khan@example.com', department: 'Engineering', role: 'Junior Developer', status: 'Active', hireDate: '2024-07-20', skills: ['JavaScript', 'HTML/CSS'], experience: '1 year internship.', salary: 65000, managerId: 'EMP381', performance: { rating: 4, notes: 'Eager to learn and contributes well to team projects.'}, training: ['Introduction to React'] }
+        ];
+        const initialApplicants = [
+            { id: 101, name: 'Aisha Rao', email: 'aisha.rao@example.com', applyingFor: 'UX Designer', status: 'Interviewing' },
+            { id: 102, name: 'Karan Verma', email: 'karan.verma@example.com', applyingFor: 'Data Analyst', status: 'Pending Review' },
+            { id: 103, name: 'Mohan Kumar', email: 'mohan.kumar@example.com', applyingFor: 'SEO Specialist', status: 'Offer Extended' },
+            { id: 104, name: 'Sunita Desai', email: 'sunita.desai@example.com', applyingFor: 'Sales Associate', status: 'Rejected' },
+        ];
+        const initialLeaveRequests = [
+            { id: 201, employeeId: 'EMP383', employeeName: 'Arjun Singh', type: 'Vacation', startDate: '2025-09-29', endDate: '2025-10-03', status: 'Approved' },
+            { id: 202, employeeId: 'EMP381', employeeName: 'Rohan Sharma', type: 'Sick Leave', startDate: '2025-09-15', endDate: '2025-09-15', status: 'Approved' },
+            { id: 203, employeeId: 'EMP382', employeeName: 'Priya Patel', type: 'Sick Leave', startDate: '2025-09-22', endDate: '2025-09-22', status: 'Approved' },
+            { id: 204, employeeId: 'EMP384', employeeName: 'Ananya Gupta', type: 'Personal Leave', startDate: '2025-11-05', endDate: '2025-11-07', status: 'Rejected' },
+            { id: 205, employeeId: 'EMP381', employeeName: 'Rohan Sharma', type: 'Vacation', startDate: '2025-12-22', endDate: '2025-12-26', status: 'Pending' },
+            { id: 206, employeeId: 'EMP387', employeeName: 'Sameer Khan', type: 'Sick Leave', startDate: '2025-09-26', endDate: '2025-09-26', status: 'Approved' },
+            { id: 207, employeeId: 'EMP385', employeeName: 'Vikram Reddy', type: 'Personal Leave', startDate: '2025-10-06', endDate: '2025-10-06', status: 'Pending' }
+        ];
+         const initialSchedule = {
+            'Monday': { employeeId: 'EMP381', shift: '9 AM - 5 PM' },
+            'Tuesday': { employeeId: 'EMP387', shift: '9 AM - 5 PM' },
+            'Wednesday': { employeeId: 'EMP382', shift: '10 AM - 6 PM' },
+            'Thursday': { employeeId: 'EMP384', shift: '9 AM - 5 PM' },
+            'Friday': { employeeId: 'EMP385', shift: '8 AM - 4 PM' },
+            'Saturday': { employeeId: 'EMP381', shift: '10 AM - 2 PM (On-Call)' },
+            'Sunday': { employeeId: null, shift: 'Day Off' },
+        };
+        // Using a fixed date for demonstration so the mock data is consistent
+        const today = new Date('2025-09-28T09:00:00');
+        const getTodayString = () => today.toISOString().split('T')[0];
+
+        const initialAttendance = {
+             "EMP381": { 
+                 "2025-09-28": { status: "Present", checkIn: "09:03 AM", checkOut: "05:01 PM" },
+                 "2025-09-27": { status: "Present", checkIn: "09:01 AM", checkOut: "04:58 PM" },
+                 "2025-09-26": { status: "Present", checkIn: "08:59 AM", checkOut: "05:03 PM" }
+             },
+             "EMP382": { "2025-09-28": { status: "Present", checkIn: "08:58 AM", checkOut: "05:05 PM" } },
+             "EMP384": { "2025-09-28": { status: "Present", checkIn: "09:10 AM", checkOut: null } },
+             "EMP385": { "2025-09-27": { status: "Present", checkIn: "09:00 AM", checkOut: "04:55 PM" } },
+             "EMP387": { "2025-09-27": { status: "Present", checkIn: "09:02 AM", checkOut: "04:58 PM" } }
+        };
+        
+        const initialSalaryPayments = {
+            "EMP381": { "2025-09": { status: "Paid", amount: 7916.67, date: "2025-09-25" } },
+            "EMP382": { "2025-09": { status: "Paid", amount: 9166.67, date: "2025-09-25" } },
+            "EMP384": { "2025-09": { status: "Paid", amount: 6666.67, date: "2025-09-25" } },
+        }
+
+        const departments = ['Engineering', 'Marketing', 'Sales', 'Human Resources', 'Finance', 'Operations'];
+        const statuses = ['Active', 'On Leave', 'Terminated'];
+        const roles = ['Admin', 'Manager', 'Employee'];
+        const applicantStatuses = ['Pending Review', 'Interviewing', 'Offer Extended', 'Rejected', 'Hired'];
+        const leaveTypes = ['Vacation', 'Sick Leave', 'Personal Leave', 'Unpaid Leave'];
+
+
+        // --- HELPER FUNCTIONS ---
+        const calculateTenure = (hireDate) => {
+            if (!hireDate) return 'N/A';
+            const start = new Date(hireDate);
+            const end = new Date();
+            let years = end.getFullYear() - start.getFullYear();
+            let months = end.getMonth() - start.getMonth();
+            if (months < 0) { years--; months += 12; }
+            return `${years} years, ${months} months`;
+        };
+
+        // --- ICONS ---
+        const Icon = ({ path, className = "h-6 w-6" }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d={path} /></svg>;
+        const DashboardIcon = () => <Icon path="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />;
+        const EmployeeIcon = () => <Icon path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />;
+        const ApplicantIcon = () => <Icon path="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />;
+        const CalendarIcon = () => <Icon path="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />;
+        const LeaveIcon = () => <Icon path="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />;
+        const PaymentIcon = () => <Icon path="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H4a3 3 0 00-3 3v8a3 3 0 003 3z" />;
+        const ReportIcon = () => <Icon path="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />;
+        const LogoutIcon = () => <Icon path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />;
+        const AttendanceIcon = () => <Icon path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />;
+        const ViewIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>);
+        const EditIcon = () => <Icon path="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" className="h-5 w-5" />;
+        const DeleteIcon = () => <Icon path="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />;
+        
+        // --- GENERIC COMPONENTS ---
+        const Toast = ({ message, type }) => {
+            if (!message) return null;
+            const bgColor = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            return <div className={`toast ${bgColor}`}>{message}</div>;
+        };
+        
+        const Modal = ({ isOpen, onClose, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+                        {children}
+                    </div>
+                </div>
+            );
+        };
+
+        const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => (
+            <Modal isOpen={isOpen} onClose={onClose}>
+                 <div className="p-2">
+                    <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                    <p className="mt-2 text-sm text-gray-600">{message}</p>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                        <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+                    </div>
+                </div>
+            </Modal>
+        );
+        
+        const EmployeeModal = ({ isOpen, onClose, employee, onSave, mode, employees }) => {
+            const [formData, setFormData] = useState(employee);
+
+            useEffect(() => {
+                setFormData(employee);
+            }, [employee]);
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+            
+            const handleSalaryChange = (e) => {
+                const value = e.target.value;
+                setFormData(prev => ({ ...prev, salary: value === '' ? '' : parseInt(value, 10) }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(formData);
+                onClose();
+            };
+
+            if (!isOpen || !formData) return null;
+            
+            const isViewMode = mode === 'view';
+            const manager = employees.find(e => e.id === formData.managerId);
+            const managerName = manager ? `${manager.name} (${manager.id})` : 'N/A';
+
+            return (
+                <Modal isOpen={isOpen} onClose={onClose}>
+                    <h2 className="text-2xl font-bold mb-6">{mode === 'add' ? 'Add Employee' : (mode === 'edit' ? 'Edit Employee' : 'Employee Profile')}</h2>
+                    {isViewMode ? (
+                        <div className="space-y-4">
+                            <div><strong className="text-gray-600">ID:</strong> {formData.id}</div>
+                            <div><strong className="text-gray-600">Name:</strong> {formData.name}</div>
+                            <div><strong className="text-gray-600">Email:</strong> {formData.email}</div>
+                            <div><strong className="text-gray-600">Department:</strong> {formData.department}</div>
+                            <div><strong className="text-gray-600">Role:</strong> {formData.role}</div>
+                             <div><strong className="text-gray-600">Manager:</strong> {managerName}</div>
+                            <div><strong className="text-gray-600">Status:</strong> {formData.status}</div>
+                            <div><strong className="text-gray-600">Hire Date:</strong> {formData.hireDate}</div>
+                             <div><strong className="text-gray-600">Tenure:</strong> {calculateTenure(formData.hireDate)}</div>
+                            <div><strong className="text-gray-600">Salary:</strong> ${formData.salary?.toLocaleString()}</div>
+                            <div className="mt-6 flex justify-end">
+                                <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
+                            </div>
+                        </div>
+                    ) : (
+                         <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                                    <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Department</label>
+                                    <select name="department" value={formData.department} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                                    <input type="text" name="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Manager</label>
+                                    <select name="managerId" value={formData.managerId || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                        <option value="">-- No Manager --</option>
+                                        {employees.filter(e => e.id !== formData.id && e.status === 'Active').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                                    <select name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                        {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Hire Date</label>
+                                    <input type="date" name="hireDate" value={formData.hireDate} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Salary (Annual)</label>
+                                    <input type="number" name="salary" value={formData.salary} onChange={handleSalaryChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Changes</button>
+                            </div>
+                        </form>
+                    )}
+                </Modal>
+            );
+        };
+
+
+        // --- LOGIN PAGE ---
+        const LoginPage = ({ onLogin }) => {
+            const [companyCode, setCompanyCode] = useState('');
+            const [email, setEmail] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!companyCode || !email) {
+                    setError('Please fill in all fields.');
+                    return;
+                }
+                
+                let role = 'Employee';
+                let loginEmail = email;
+
+                if (companyCode.toUpperCase() === 'ADMIN-CODE') {
+                    role = 'Admin';
+                } else if (companyCode.toUpperCase() === 'MANAGER-CODE') {
+                    role = 'Manager';
+                }
+                
+                onLogin(role, loginEmail);
+            };
+
+            return (
+                 <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                    <div className="w-full max-w-md p-8 space-y-8 bg-white shadow-lg rounded-xl">
+                        <div className="text-center">
+                             <h1 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500 font-brand">StaffOpt</h1>
+                            <h2 className="mt-6 text-2xl font-bold text-gray-900 font-heading">Sign in to your account</h2>
+                        </div>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                            {error && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-lg">{error}</div>}
+                            <div className="rounded-md shadow-sm -space-y-px">
+                                <div>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                                        placeholder="Company Code"
+                                        value={companyCode}
+                                        onChange={(e) => setCompanyCode(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                     <input 
+                                        type="email" 
+                                        autoComplete="email" 
+                                        required 
+                                        className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                                        placeholder="Email Address"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <button type="submit" className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 btn-primary">
+                                    Sign In
+                                </button>
+                            </div>
+                        </form>
+                         <div className="text-xs text-center text-gray-500">
+                             <p className="font-semibold">Demo Codes:</p>
+                             <p>Admin: ADMIN-CODE</p>
+                             <p>Manager: MANAGER-CODE</p>
+                             <p>Employee: Any other code</p>
+                         </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- DASHBOARD VIEW ---
+        const DashboardView = ({ employees, leaveRequests, applicants }) => {
+             const departmentData = useMemo(() => {
+                const counts = employees.reduce((acc, emp) => {
+                    acc[emp.department] = (acc[emp.department] || 0) + 1;
+                    return acc;
+                }, {});
+                return {
+                    labels: Object.keys(counts),
+                    datasets: [{
+                        data: Object.values(counts),
+                        backgroundColor: ['#4361ee', '#2196f3', '#009688', '#ffc107', '#fd7e14', '#6f42c1'],
+                    }],
+                };
+            }, [employees]);
+
+            const statusData = useMemo(() => {
+                const counts = employees.reduce((acc, emp) => {
+                    acc[emp.status] = (acc[emp.status] || 0) + 1;
+                    return acc;
+                }, {});
+                return {
+                    labels: Object.keys(counts),
+                    datasets: [{
+                        label: 'Employee Status',
+                        data: Object.values(counts),
+                        backgroundColor: ['#198754', '#ffc107', '#dc3545'],
+                    }],
+                };
+            }, [employees]);
+            
+            const ChartComponent = ({ type, data, options }) => {
+                const canvasRef = useRef(null);
+                useEffect(() => {
+                    if (!canvasRef.current) return;
+                    const chart = new Chart(canvasRef.current, { type, data, options });
+                    return () => chart.destroy();
+                }, [type, data, options]);
+                return <canvas ref={canvasRef} />;
+            };
+
+            const stats = [
+                { name: 'Total Employees', value: employees.length, icon: EmployeeIcon },
+                { name: 'On Leave', value: employees.filter(e => e.status === 'On Leave').length, icon: LeaveIcon },
+                { name: 'Pending Applicants', value: applicants.filter(a => a.status === 'Pending Review' || a.status === 'Interviewing').length, icon: ApplicantIcon },
+                { name: 'Pending Leave Requests', value: leaveRequests.filter(l => l.status === 'Pending').length, icon: CalendarIcon }
+            ];
+
+            return (
+                <div className="p-8 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {stats.map(stat => (
+                            <div key={stat.name} className="card flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500">{stat.name}</p>
+                                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                                </div>
+                                <div className="bg-blue-100 text-blue-600 p-3 rounded-full">
+                                    <stat.icon className="h-6 w-6" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-2 card">
+                            <h3 className="text-lg font-semibold text-gray-900 font-heading">Departments</h3>
+                            <div className="mt-4"><ChartComponent type="doughnut" data={departmentData} /></div>
+                        </div>
+                        <div className="lg:col-span-3 card">
+                            <h3 className="text-lg font-semibold text-gray-900 font-heading">Employee Status</h3>
+                             <div className="mt-4"><ChartComponent type="bar" data={statusData} options={{ scales: { y: { beginAtZero: true } } }} /></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- PAYMENTS VIEW ---
+        const PaymentsView = ({ employees, showToast }) => {
+             const totalMonthlyPayroll = useMemo(() => {
+                const annualTotal = employees.reduce((sum, emp) => emp.status !== 'Terminated' ? sum + emp.salary : sum, 0);
+                return annualTotal / 12;
+            }, [employees]);
+
+            return (
+                <div className="p-8">
+                    <div className="card">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 font-heading">Salary Payments</h2>
+                            <button onClick={() => showToast(`Payment processing for ${new Date().toLocaleString('default', { month: 'long' })} initiated.`)} className="btn-primary">Process Payments</button>
+                        </div>
+                        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h3 className="text-lg font-semibold text-blue-800 font-heading">Total Monthly Payroll Cost</h3>
+                            <p className="text-3xl font-bold text-blue-600">${totalMonthlyPayroll.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Annual Salary</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {employees.filter(e => e.status !== 'Terminated').map(emp => (
+                                        <tr key={emp.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{emp.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.department}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.role}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-right">${emp.salary.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- ReportsView ---
+        const ReportsView = ({ employees }) => {
+            const attritionRate = useMemo(() => {
+                const terminated = employees.filter(e => e.status === 'Terminated').length;
+                return employees.length > 0 ? ((terminated / employees.length) * 100).toFixed(1) : 0;
+            }, [employees]);
+
+            const salaryData = useMemo(() => {
+                const ranges = { '<$70k': 0, '$70k-$90k': 0, '$90k-$110k': 0, '>$110k': 0 };
+                employees.forEach(e => {
+                    if (e.salary < 70000) ranges['<$70k']++;
+                    else if (e.salary <= 90000) ranges['$70k-$90k']++;
+                    else if (e.salary <= 110000) ranges['$90k-$110k']++;
+                    else ranges['>$110k']++;
+                });
+                return {
+                    labels: Object.keys(ranges),
+                    datasets: [{ label: 'Number of Employees', data: Object.values(ranges), backgroundColor: '#4361ee' }]
+                };
+            }, [employees]);
+            
+            const ChartComponent = ({ type, data, options }) => {
+                const canvasRef = useRef(null);
+                useEffect(() => {
+                    if (!canvasRef.current) return;
+                    const chart = new Chart(canvasRef.current, { type, data, options });
+                    return () => chart.destroy();
+                }, [type, data, options]);
+                return <canvas ref={canvasRef} />;
+            };
+
+            return (
+                <div className="p-8 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="card text-center">
+                            <h3 className="text-lg font-semibold text-gray-900 font-heading">Attrition Rate</h3>
+                            <p className="text-4xl font-bold text-red-500 mt-2">{attritionRate}%</p>
+                            <p className="text-xs text-gray-500">Year to Date</p>
+                        </div>
+                         {/* Other KPIs can be added here */}
+                    </div>
+                    <div className="card">
+                        <h3 className="text-lg font-semibold text-gray-900 font-heading">Salary Distribution</h3>
+                        <div className="mt-4"><ChartComponent type="bar" data={salaryData} options={{ scales: { y: { beginAtZero: true } } }} /></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SCHEDULE VIEW ---
+        const ScheduleView = ({ schedule, setSchedule, employees, userRole, showToast }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editableSchedule, setEditableSchedule] = useState(schedule);
+
+            useEffect(() => {
+                setEditableSchedule(schedule);
+            }, [schedule]);
+
+            const handleEditChange = (day, field, value) => {
+                const newSchedule = { ...editableSchedule };
+                const employeeId = field === 'employeeId' ? (value ? value : null) : newSchedule[day].employeeId;
+                const shift = field === 'shift' ? value : newSchedule[day].shift;
+                newSchedule[day] = { employeeId, shift };
+                setEditableSchedule(newSchedule);
+            };
+            
+            const handleSave = () => {
+                setSchedule(editableSchedule);
+                setIsEditing(false);
+                showToast('Schedule updated successfully!');
+            };
+
+            const handleCancel = () => {
+                setEditableSchedule(schedule);
+                setIsEditing(false);
+            };
+
+            const getEmployeeName = (empId) => {
+                if (empId === null) return 'N/A';
+                const employee = employees.find(e => e.id === empId);
+                return employee ? employee.name : 'Unknown';
+            };
+
+            const activeEmployees = useMemo(() => employees.filter(e => e.status === 'Active'), [employees]);
+
+            return (
+                <div className="p-8">
+                    <div className="card">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 font-heading">This Week's Schedule</h2>
+                            {(userRole === 'Admin' || userRole === 'Manager') && !isEditing && (
+                                <button onClick={() => setIsEditing(true)} className="btn-primary">Edit Schedule</button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                            {Object.entries(editableSchedule).map(([day, assignment]) => (
+                                <div key={day} className="border rounded-lg p-4 bg-gray-50">
+                                    <h3 className="font-semibold text-center text-blue-600">{day}</h3>
+                                    <div className="text-center mt-2 space-y-2">
+                                        {isEditing ? (
+                                            <>
+                                                <select
+                                                    value={assignment.employeeId || ''}
+                                                    onChange={(e) => handleEditChange(day, 'employeeId', e.target.value)}
+                                                    className="w-full p-1 border rounded-md text-xs"
+                                                >
+                                                    <option value="">-- Day Off --</option>
+                                                    {activeEmployees.map(emp => (
+                                                        <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    type="text"
+                                                    value={assignment.shift}
+                                                    onChange={(e) => handleEditChange(day, 'shift', e.target.value)}
+                                                    className="w-full p-1 border rounded-md text-xs"
+                                                    disabled={!assignment.employeeId}
+                                                />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="text-sm font-medium text-gray-700">{getEmployeeName(assignment.employeeId)}</p>
+                                                <p className="text-xs text-gray-500">{assignment.shift}</p>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {isEditing && (
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <button onClick={handleCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                                <button onClick={handleSave} className="btn-primary">Save Changes</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- LEAVE VIEW ---
+        const LeaveView = ({ leaveRequests, setLeaveRequests, currentUser, userRole, showToast, employees }) => {
+            const [newRequest, setNewRequest] = useState({ type: 'Vacation', startDate: '', endDate: '' });
+
+            const handleRequestChange = (e) => {
+                setNewRequest({ ...newRequest, [e.target.name]: e.target.value });
+            };
+
+            const handleRequestSubmit = (e) => {
+                e.preventDefault();
+                if (!newRequest.startDate || !newRequest.endDate) {
+                    showToast('Please select start and end dates.', 'error');
+                    return;
+                }
+                const newLeave = {
+                    id: Date.now(),
+                    employeeId: currentUser.id,
+                    employeeName: currentUser.name,
+                    ...newRequest,
+                    status: 'Pending',
+                };
+                setLeaveRequests(prev => [newLeave, ...prev]);
+                setNewRequest({ type: 'Vacation', startDate: '', endDate: '' });
+                showToast('Leave request submitted successfully.');
+            };
+
+            const handleStatusChange = (id, status) => {
+                setLeaveRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
+                showToast(`Request ${status.toLowerCase()}.`);
+            };
+
+            const requestsToShow = useMemo(() => {
+                if (userRole === 'Admin') {
+                    return leaveRequests;
+                }
+                if (userRole === 'Manager') {
+                    const teamIds = employees
+                        .filter(emp => emp.managerId === currentUser.id)
+                        .map(emp => emp.id);
+                    // A manager can also see their own requests
+                    teamIds.push(currentUser.id);
+                    return leaveRequests.filter(req => teamIds.includes(req.employeeId));
+                }
+                // Default for Employee
+                return leaveRequests.filter(r => r.employeeId === currentUser.id);
+            }, [leaveRequests, userRole, currentUser, employees]);
+            
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'Approved': return 'bg-green-100 text-green-800';
+                    case 'Pending': return 'bg-yellow-100 text-yellow-800';
+                    case 'Rejected': return 'bg-red-100 text-red-800';
+                    default: return 'bg-gray-100 text-gray-800';
+                }
+            };
+
+            return (
+                <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {(userRole === 'Employee' || userRole === 'Manager') && (
+                        <div className="lg:col-span-1">
+                            <div className="card">
+                                <h3 className="text-lg font-bold text-gray-800 mb-4 font-heading">Request Leave</h3>
+                                <form onSubmit={handleRequestSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Leave Type</label>
+                                        <select name="type" value={newRequest.type} onChange={handleRequestChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                                            {leaveTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                                        <input type="date" name="startDate" value={newRequest.startDate} onChange={handleRequestChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">End Date</label>
+                                        <input type="date" name="endDate" value={newRequest.endDate} onChange={handleRequestChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                                    </div>
+                                    <button type="submit" className="w-full btn-primary">Submit Request</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                    <div className={(userRole === 'Employee' || userRole === 'Manager') ? "lg:col-span-2" : "lg:col-span-3"}>
+                        <div className="card">
+                           <h3 className="text-lg font-bold text-gray-800 mb-4 font-heading">{userRole === 'Employee' ? 'My Leave History' : 'Leave Requests'}</h3>
+                           <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            {userRole !== 'Employee' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>}
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            {(userRole === 'Admin' || userRole === 'Manager') && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {requestsToShow.map(req => (
+                                            <tr key={req.id}>
+                                                {userRole !== 'Employee' && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employeeName}</td>}
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.type}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.startDate} to {req.endDate}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}>
+                                                        {req.status}
+                                                    </span>
+                                                </td>
+                                                {(userRole === 'Admin' || userRole === 'Manager') && (
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                                        {req.status === 'Pending' && req.employeeId !== currentUser.id && (
+                                                            <>
+                                                                <button onClick={() => handleStatusChange(req.id, 'Approved')} className="text-blue-600 hover:text-blue-900">Approve</button>
+                                                                <button onClick={() => handleStatusChange(req.id, 'Rejected')} className="text-red-600 hover:text-red-900">Reject</button>
+                                                            </>
+                                                        )}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- ATTENDANCE VIEW ---
+        const AttendanceView = ({ attendanceRecords, setAttendanceRecords, currentUser, userRole, employees, leaveRequests, showToast }) => {
+            const [selectedDate, setSelectedDate] = useState(getTodayString());
+
+            const handleCheckIn = () => {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const todayStr = getTodayString();
+                
+                setAttendanceRecords(prev => {
+                    const userRecords = prev[currentUser.id] || {};
+                    userRecords[todayStr] = { status: 'Present', checkIn: time, checkOut: null };
+                    return { ...prev, [currentUser.id]: userRecords };
+                });
+                showToast('Checked in successfully!');
+            };
+
+            const handleCheckOut = () => {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const todayStr = getTodayString();
+
+                setAttendanceRecords(prev => {
+                    const userRecords = prev[currentUser.id] || {};
+                    const todayRecord = userRecords[todayStr] || { status: 'Present', checkIn: null };
+                    userRecords[todayStr] = { ...todayRecord, checkOut: time };
+                    return { ...prev, [currentUser.id]: userRecords };
+                });
+                showToast('Checked out successfully!');
+            };
+
+            const attendanceForDate = useMemo(() => {
+                let employeesToList = [];
+                if (userRole === 'Admin') {
+                    employeesToList = employees.filter(e => e.status !== 'Terminated');
+                } else if (userRole === 'Manager') {
+                    employeesToList = employees.filter(e => e.managerId === currentUser.id || e.id === currentUser.id);
+                }
+
+                return employeesToList.map(emp => {
+                    const onLeave = leaveRequests.find(req => 
+                        req.employeeId === emp.id && 
+                        req.status === 'Approved' &&
+                        new Date(selectedDate) >= new Date(req.startDate) &&
+                        new Date(selectedDate) <= new Date(req.endDate)
+                    );
+                    
+                    if (onLeave) {
+                        return { ...emp, attendance: { status: 'On Leave' } };
+                    }
+
+                    const record = attendanceRecords[emp.id]?.[selectedDate];
+                    return { ...emp, attendance: record || { status: 'Absent' } };
+                });
+            }, [selectedDate, attendanceRecords, employees, userRole, currentUser, leaveRequests]);
+            
+            if (userRole === 'Employee') {
+                const todayRecord = attendanceRecords[currentUser.id]?.[getTodayString()];
+                const onLeaveToday = leaveRequests.find(req => 
+                    req.employeeId === currentUser.id && 
+                    req.status === 'Approved' &&
+                    new Date(getTodayString()) >= new Date(req.startDate) &&
+                    new Date(getTodayString()) <= new Date(req.endDate)
+                );
+                
+                const userHistory = useMemo(() => {
+                    const records = attendanceRecords[currentUser.id] || {};
+                    return Object.entries(records)
+                        .map(([date, record]) => ({ date, ...record }))
+                        .sort((a, b) => new Date(b.date) - new Date(a.date));
+                }, [attendanceRecords, currentUser.id]);
+
+                return (
+                    <div className="p-8 space-y-8">
+                        {/* Daily Check-in card */}
+                        <div className="card w-full max-w-md mx-auto text-center">
+                            <h2 className="text-xl font-bold text-gray-800 font-heading">My Attendance</h2>
+                            <p className="text-gray-500 mb-6">{new Date(getTodayString()).toDateString()}</p>
+                            
+                            {onLeaveToday ? (
+                                <div className="p-4 bg-blue-100 text-blue-800 rounded-lg">
+                                    <p className="font-semibold">Status: On Leave</p>
+                                </div>
+                            ) : todayRecord ? (
+                                <div className="space-y-4">
+                                     <div className="p-4 bg-green-100 text-green-800 rounded-lg">
+                                        <p className="font-semibold">Status: Present</p>
+                                    </div>
+                                    <div className="flex justify-around">
+                                        <div>
+                                            <p className="text-sm text-gray-500">Check In</p>
+                                            <p className="font-bold text-lg">{todayRecord.checkIn || '--:--'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500">Check Out</p>
+                                            <p className="font-bold text-lg">{todayRecord.checkOut || '--:--'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-center space-x-4 pt-4">
+                                        <button onClick={handleCheckIn} disabled={!!todayRecord.checkIn} className="btn-primary py-2 px-6 disabled:bg-gray-400">Check In</button>
+                                        <button onClick={handleCheckOut} disabled={!todayRecord.checkIn || !!todayRecord.checkOut} className="btn-secondary py-2 px-6 disabled:bg-gray-400">Check Out</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-red-100 text-red-800 rounded-lg">
+                                        <p className="font-semibold">Status: Absent</p>
+                                    </div>
+                                    <button onClick={handleCheckIn} className="w-full btn-primary py-3">Check In for Today</button>
+                                </div>
+                            )}
+                        </div>
+                        {/* History Table */}
+                        <div className="card">
+                             <h3 className="text-lg font-bold text-gray-800 mb-4 font-heading">My Attendance History</h3>
+                              <div className="overflow-x-auto max-h-96">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check In</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check Out</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {userHistory.map(rec => (
+                                            <tr key={rec.date}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{rec.date}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rec.status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{rec.status}</span></td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{rec.checkIn || 'N/A'}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{rec.checkOut || 'N/A'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Admin and Manager view
+            return (
+                 <div className="p-8">
+                    <div className="card">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 font-heading">Daily Attendance Sheet</h2>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                className="p-2 border rounded-md"
+                            />
+                        </div>
+                         <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check In</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check Out</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {attendanceForDate.map(emp => (
+                                        <tr key={emp.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{emp.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${emp.attendance.status === 'Present' ? 'bg-green-100 text-green-800' : (emp.attendance.status === 'On Leave' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800')}`}>{emp.attendance.status}</span></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.attendance.checkIn || 'N/A'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.attendance.checkOut || 'N/A'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                 </div>
+            );
+        };
+        
+        // --- MAIN APPLICATION LAYOUT ---
+        const MainAppLayout = ({ onLogout, userRole, userEmail }) => {
+            const [employees, setEmployees] = useState(() => JSON.parse(localStorage.getItem('employees')) || initialEmployees);
+            const [applicants, setApplicants] = useState(() => JSON.parse(localStorage.getItem('applicants')) || initialApplicants);
+            const [leaveRequests, setLeaveRequests] = useState(() => JSON.parse(localStorage.getItem('leaveRequests')) || initialLeaveRequests);
+            const [schedule, setSchedule] = useState(() => JSON.parse(localStorage.getItem('schedule')) || initialSchedule);
+            const [attendanceRecords, setAttendanceRecords] = useState(() => JSON.parse(localStorage.getItem('attendance')) || initialAttendance);
+            const [salaryPayments, setSalaryPayments] = useState(() => JSON.parse(localStorage.getItem('salaryPayments')) || initialSalaryPayments);
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [toast, setToast] = useState({ message: '', type: '' });
+            
+            const [searchTerm, setSearchTerm] = useState('');
+            const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'ascending' });
+            const [currentPage, setCurrentPage] = useState(1);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [selectedEmployee, setSelectedEmployee] = useState(null);
+            const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+            const [employeeToDelete, setEmployeeToDelete] = useState(null);
+            const [modalMode, setModalMode] = useState('view');
+            const ITEMS_PER_PAGE = 7;
+            
+            const currentUser = useMemo(() => {
+                if (userRole === 'Admin') {
+                    const adminProfile = employees.find(e => e.email === 'ananya.gupta@example.com') || { name: 'Admin User', role: 'Admin' };
+                    return { ...adminProfile, id: adminProfile.id, role: 'Admin', email: userEmail };
+                }
+                
+                if (userRole === 'Manager') {
+                    const managerProfile = employees.find(e => e.email === 'priya.patel@example.com') || { name: 'Manager User', role: 'Manager' };
+                    return { ...managerProfile, id: managerProfile.id, role: 'Manager', email: userEmail };
+                }
+                
+                const foundEmployee = employees.find(e => e.email.toLowerCase() === userEmail.toLowerCase());
+                
+                if (foundEmployee) {
+                    return { ...foundEmployee, role: 'Employee' };
+                }
+                
+                return { id: `TEMP-${Date.now()}`, name: 'New Employee', email: userEmail, role: 'Employee' };
+            }, [userRole, userEmail, employees]);
+            
+            useEffect(() => { localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
+            useEffect(() => { localStorage.setItem('applicants', JSON.stringify(applicants)); }, [applicants]);
+            useEffect(() => { localStorage.setItem('leaveRequests', JSON.stringify(leaveRequests)); }, [leaveRequests]);
+            useEffect(() => { localStorage.setItem('schedule', JSON.stringify(schedule)); }, [schedule]);
+            useEffect(() => { localStorage.setItem('attendance', JSON.stringify(attendanceRecords)); }, [attendanceRecords]);
+            useEffect(() => { localStorage.setItem('salaryPayments', JSON.stringify(salaryPayments)); }, [salaryPayments]);
+            
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast({ message: '', type: '' }), 3000);
+            };
+
+            const handleSaveEmployee = (employeeData) => {
+                if (modalMode === 'add') {
+                    const existingIds = employees.map(e => parseInt(e.id.replace('EMP', '')));
+                    const newIdNumber = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 381;
+                    const newId = `EMP${newIdNumber}`;
+                    setEmployees(prev => [...prev, { ...employeeData, id: newId }]);
+                    showToast('Employee added successfully!');
+                } else {
+                    setEmployees(prev => prev.map(emp => emp.id === employeeData.id ? employeeData : emp));
+                    showToast('Employee updated successfully!');
+                }
+            };
+            
+            const handleDeleteEmployee = () => {
+                setEmployees(prev => prev.filter(emp => emp.id !== employeeToDelete.id));
+                setIsDeleteConfirmOpen(false);
+                setEmployeeToDelete(null);
+                showToast('Employee deleted successfully.');
+            };
+
+            const AppHeader = () => (
+                <header className="bg-white p-4 flex justify-between items-center shadow-sm">
+                    <h1 className="text-2xl font-bold text-gray-800 font-heading">{currentView.charAt(0).toUpperCase() + currentView.slice(1)}</h1>
+                     <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                           <div className="font-medium text-gray-800">{currentUser?.name}</div>
+                           <div className="text-xs text-gray-500">{currentUser?.role}</div>
+                        </div>
+                    </div>
+                </header>
+            );
+            
+            const Sidebar = () => {
+                const navItems = [
+                    { name: 'dashboard', icon: DashboardIcon, roles: ['Admin', 'Manager', 'Employee'] },
+                    { name: 'attendance', icon: AttendanceIcon, roles: ['Admin', 'Manager', 'Employee'] },
+                    { name: 'employees', icon: EmployeeIcon, roles: ['Admin', 'Manager'] },
+                    { name: 'applicants', icon: ApplicantIcon, roles: ['Admin', 'Manager'] },
+                    { name: 'schedule', icon: CalendarIcon, roles: ['Admin', 'Manager', 'Employee'] },
+                    { name: 'leave', icon: LeaveIcon, roles: ['Admin', 'Manager', 'Employee'] },
+                    { name: 'salaries', icon: PaymentIcon, roles: ['Admin'] },
+                    { name: 'reports', icon: ReportIcon, roles: ['Admin'] },
+                ];
+
+                return (
+                    <aside className="w-64 bg-slate-900 text-white flex flex-col">
+                        <div className="h-20 flex items-center justify-center px-4 border-b border-slate-700">
+                           <h1 className="text-3xl font-bold tracking-tight font-brand text-white">StaffOpt</h1>
+                        </div>
+                        <nav className="flex-1 p-2 space-y-1">
+                           {navItems.map(item => (item.roles && item.roles.includes(userRole)) && (
+                                <a key={item.name} href="#" onClick={() => setCurrentView(item.name)} className={`sidebar-link ${currentView === item.name ? 'active' : ''}`}>
+                                    <item.icon />
+                                    <span className="ml-3">{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</span>
+                                </a>
+                            ))}
+                        </nav>
+                        <div className="p-4 border-t border-slate-700">
+                            <a href="#" onClick={onLogout} className="sidebar-link">
+                               <LogoutIcon />
+                                <span className="ml-3">Logout</span>
+                            </a>
+                            <div className="text-center text-xs text-slate-500 mt-4">&copy; {new Date().getFullYear()} StaffOpt</div>
+                        </div>
+                    </aside>
+                );
+            };
+            
+             const EmployeesView = () => {
+                useEffect(() => {
+                    setCurrentPage(1);
+                }, [searchTerm]);
+
+                const employeeListForView = useMemo(() => {
+                    let filtered = employees;
+                    if (userRole === 'Manager') {
+                        filtered = employees.filter(emp => emp.managerId === currentUser.id || emp.id === currentUser.id);
+                    }
+
+                    const searched = filtered.filter(employee =>
+                        employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        employee.department.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+
+                    return [...searched].sort((a, b) => {
+                        if (a[sortConfig.key] < b[sortConfig.key]) {
+                            return sortConfig.direction === 'ascending' ? -1 : 1;
+                        }
+                        if (a[sortConfig.key] > b[sortConfig.key]) {
+                            return sortConfig.direction === 'ascending' ? 1 : -1;
+                        }
+                        return 0;
+                    });
+                }, [employees, searchTerm, sortConfig, userRole, currentUser.id]);
+
+                const paginatedEmployees = employeeListForView.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+                const totalPages = Math.ceil(employeeListForView.length / ITEMS_PER_PAGE);
+                
+                const getManagerName = (managerId) => {
+                   if (managerId === null) return 'N/A';
+                   const manager = employees.find(e => e.id === managerId);
+                   return manager ? manager.name : 'Unknown';
+                };
+
+                return (
+                    <div className="p-8">
+                        <div className="card">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4 font-heading">Employee Directory</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <input
+                                    type="text"
+                                    placeholder="Search employees..."
+                                    className="p-2 border rounded-md w-1/3"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                                {userRole === 'Admin' && <button onClick={() => { setModalMode('add'); setSelectedEmployee({ name: '', email: '', department: departments[0], role: '', status: statuses[0], hireDate: '', salary: 0 }); setIsModalOpen(true); }} className="btn-primary">Add Employee</button>}
+                            </div>
+                             <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50"><tr>{['ID', 'Name', 'Department', 'Role', 'Manager', 'Status', 'Actions'].map(head => <th key={head} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{head}</th>)}</tr></thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {paginatedEmployees.map(emp => (
+                                            <tr key={emp.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.id}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{emp.name}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.department}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.role}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getManagerName(emp.managerId)}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.status}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    <button onClick={() => { setModalMode('view'); setSelectedEmployee(emp); setIsModalOpen(true); }} className="text-gray-500 hover:text-blue-600"><ViewIcon /></button>
+                                                    {(userRole === 'Admin' || (userRole === 'Manager' && emp.id === currentUser.id)) && (
+                                                        <>
+                                                            <button onClick={() => { setModalMode('edit'); setSelectedEmployee(emp); setIsModalOpen(true); }} className="text-gray-500 hover:text-blue-600"><EditIcon /></button>
+                                                            {userRole === 'Admin' && <button onClick={() => { setEmployeeToDelete(emp); setIsDeleteConfirmOpen(true); }} className="text-gray-500 hover:text-red-600"><DeleteIcon /></button>}
+                                                        </>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex justify-between items-center mt-4">
+                                <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+                                <div className="space-x-2">
+                                    <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage === 1} className="p-2 border rounded-md disabled:opacity-50">Previous</button>
+                                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={currentPage === totalPages} className="p-2 border rounded-md disabled:opacity-50">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+
+            const renderView = () => {
+                switch(currentView) {
+                    case 'dashboard': return <DashboardView employees={employees} leaveRequests={leaveRequests} applicants={applicants} />;
+                    case 'attendance': return <AttendanceView attendanceRecords={attendanceRecords} setAttendanceRecords={setAttendanceRecords} currentUser={currentUser} userRole={userRole} employees={employees} leaveRequests={leaveRequests} showToast={showToast} />;
+                    case 'employees': return <EmployeesView />;
+                    case 'applicants': {
+                        const handleStatusChange = (applicantId, newStatus) => {
+                            setApplicants(applicants.map(app => app.id === applicantId ? { ...app, status: newStatus } : app));
+                            showToast("Applicant status updated.");
+                        };
+                        return (
+                            <div className="p-8">
+                                <div className="card">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 font-heading">Applicant Tracking</h2>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applicant</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applying For</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {applicants.map(app => (
+                                                    <tr key={app.id}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{app.name}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.applyingFor}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            <select
+                                                                value={app.status}
+                                                                onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                                                                className="p-1 border rounded-md text-xs"
+                                                            >
+                                                                {applicantStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+                    case 'schedule': return <ScheduleView schedule={schedule} setSchedule={setSchedule} employees={employees} userRole={userRole} showToast={showToast} />;
+                    case 'leave': return <LeaveView leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests} currentUser={currentUser} userRole={userRole} showToast={showToast} employees={employees} />;
+                    case 'salaries': return <PaymentsView employees={employees} showToast={showToast}/>;
+                    case 'reports': return <ReportsView employees={employees} />;
+                    default: return <DashboardView employees={employees} leaveRequests={leaveRequests} applicants={applicants} />;
+                }
+            };
+            
+            return (
+                <div className="flex h-screen bg-gray-100">
+                    <Sidebar />
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <AppHeader />
+                        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-f4f7fc">
+                            {renderView()}
+                        </main>
+                    </div>
+                    <Toast message={toast.message} type={toast.type} />
+                     <EmployeeModal 
+                        isOpen={isModalOpen} 
+                        onClose={() => setIsModalOpen(false)} 
+                        employee={selectedEmployee}
+                        onSave={handleSaveEmployee}
+                        mode={modalMode}
+                        employees={employees}
+                    />
+                    <ConfirmationModal
+                        isOpen={isDeleteConfirmOpen}
+                        onClose={() => setIsDeleteConfirmOpen(false)}
+                        onConfirm={handleDeleteEmployee}
+                        title="Confirm Deletion"
+                        message={`Are you sure you want to delete ${employeeToDelete?.name}? This action cannot be undone.`}
+                    />
+                </div>
+            );
+        };
+        
+        // --- APP CONTROLLER ---
+        function App() {
+            const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('isAuthenticated'));
+            const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || 'Employee');
+            const [userEmail, setUserEmail] = useState(() => localStorage.getItem('userEmail') || '');
+
+            const handleLogin = (role, email) => {
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('userRole', role);
+                localStorage.setItem('userEmail', email);
+                setIsAuthenticated(true);
+                setUserRole(role);
+                setUserEmail(email);
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('isAuthenticated');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userEmail');
+                setIsAuthenticated(false);
+            };
+
+            return isAuthenticated ? <MainAppLayout onLogout={handleLogout} userRole={userRole} userEmail={userEmail} /> : <LoginPage onLogin={handleLogin} />;
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
