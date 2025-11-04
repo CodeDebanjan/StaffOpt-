@@ -5,6 +5,8 @@ StaffOpt is a comprehensive, single-page web application designed to streamline 
 
 Built with role-based access at its core, the system delivers a tailored experience for Admins, Managers, and Employees, ensuring that everyone has the right tools to manage their responsibilities efficiently. From high-level analytics for administrators to team management for managers and self-service tools for employees, StaffOpt covers every aspect of the employee lifecycle.
 
+<img width="565" height="448" alt="StaffOpt" src="https://github.com/user-attachments/assets/9a49f625-e36a-4f72-8495-ff01e387f072" />
+
 ✨ Core Features
 The application is packed with features tailored to different user roles, ensuring that everyone has the tools they need to be efficient.
 
