@@ -7,7 +7,7 @@ Built with role-based access at its core, the system delivers a tailored experie
 
 <img width="565" height="448" alt="StaffOpt" src="https://github.com/user-attachments/assets/9a49f625-e36a-4f72-8495-ff01e387f072" />
 
-✨ Core Features
+# Core Features
 The application is packed with features tailored to different user roles, ensuring that everyone has the tools they need to be efficient.
 
 👤 Admin (Full Access)
